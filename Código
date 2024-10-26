@@ -1,0 +1,24 @@
+/*
+ * File:   newmain.c
+ * Author: Andrés Corredor
+ */
+#include <xc.h>
+
+#pragma config FOSC = XT // Configuración del oscilador (XT externo)
+#pragma config WDTE = OFF // Desactivar el Watchdog Timer
+#pragma config PWRTE = OFF// Desactivar el Power-up Timer
+#pragma config CP = OFF // Desactivar la protección de código
+
+#define _XTAL_FREQ 4000000// Definir la frecuencia del oscilador en 4 MHz
+
+void main(void) {
+    TRISA = 0x00; // Configurar el Puerto A como salida
+    PORTA = 0x00;// Inicializar el Puerto A en 0 (todos lospinesapagados)
+    
+    while(1) { // Bucle infinito
+        RA0 = 1; // Encender el LED en el pin RA0
+        __delay_ms(500);// Retardo de 500 milisegundos
+        RA0 = 0; // Apagar el LED en el pin RA0
+        __delay_ms(500); // Retardo de 500 milisegundos
+    }
+}
