@@ -1,0 +1,52 @@
+#include <xc.h>
+
+// Configuración del PIC
+#pragma config FOSC = XT        // Oscilador XT (o configurarlo según tu cristal)
+#pragma config WDTE = OFF       // Watchdog Timer deshabilitado
+#pragma config PWRTE = OFF      // Power-up Timer deshabilitado
+#pragma config BOREN = ON       // Brown-out Reset activado
+#pragma config LVP = OFF        // Low Voltage Programming deshabilitado
+#pragma config CPD = OFF        // Código no protegido
+
+#define _XTAL_FREQ 4000000      // Frecuencia del oscilador
+
+unsigned int count = 0;
+
+// Mapear los números al display de 7 segmentos (anodo común)
+const char displayMap[] = {
+    0b00000011,  // 0 (negado de 11111100)
+    0b10011111,  // 1 (negado de 01100000)
+    0b00100101,  // 2 (negado de 11011010)
+    0b00001101,  // 3 (negado de 11110010)
+    0b10011001,  // 4 (negado de 01100110)
+    0b01001001,  // 5 (negado de 10110110)
+    0b01000001,  // 6 (negado de 10111110)
+    0b00011111,  // 7 (negado de 11100000)
+    0b00000001,  // 8 (negado de 11111110)
+    0b00001001   // 9 (negado de 11110110)
+};
+
+void display_number(unsigned int num) {
+    PORTD = displayMap[num];
+}
+
+void __interrupt() ISR() {
+    if (INTF) {  // Si hay interrupción externa
+        count = (count + 1) % 10;  // Contador de 0 a 9
+        INTF = 0;  // Limpiar bandera de interrupción
+    }
+}
+
+void main(void) {
+    // Configuración de puertos
+    TRISB0 = 1;  // Pin RB0 como entrada (botón)
+    TRISD = 0;   // Puerto D como salida (display de 7 segmentos)
+    
+    OPTION_REGbits.INTEDG = 1;  // Interrupción en el flanco ascendente
+    INTE = 1;    // Habilitar interrupción externa
+    GIE = 1;     // Habilitar interrupciones globales
+    
+    while (1) {
+        display_number(count);  // Mostrar el valor en el display
+    }
+}
