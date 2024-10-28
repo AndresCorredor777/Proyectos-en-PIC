@@ -1,0 +1,33 @@
+#include <xc.h>
+
+// Configuración de fusibles y frecuencia del oscilador
+#pragma config FOSC = XT        // Oscilador XT (utiliza cristal externo)
+#pragma config WDTE = OFF       // Watchdog Timer apagado
+#pragma config PWRTE = ON       // Power-up Timer habilitado
+#pragma config CP = OFF         // Protección de código apagada
+#define _XTAL_FREQ 4000000      // Frecuencia del oscilador a 4 MHz
+
+// Variables globales
+volatile int ledState = 0;// Estado del LED
+
+void __interrupt() isr() {
+    if (INTF) { // Verifica si la interrupción fue generada por RB0
+        ledState = !ledState;// Cambia el estado del LED
+        INTF = 0;// Limpia la bandera de interrupción externa
+    }
+}
+
+void main(void) {
+    // Configuración de puertos
+    TRISB0 = 1;// RB0 como entrada (botón)
+    TRISB1 = 0;// RB1 como salida (LED)
+    
+    // Configuración de interrupciones
+    INTE = 1;// Habilita interrupción externa en RB0
+    GIE = 1; // Habilita interrupciones globales
+    OPTION_REGbits.INTEDG = 1;// Interrupción en flanco ascendente
+
+    while (1) {
+        RB1 = ledState;// Actualiza el estado del LED
+    }
+}
