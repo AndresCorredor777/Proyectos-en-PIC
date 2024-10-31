@@ -1,0 +1,36 @@
+#include <xc.h>
+
+// Configuración de fusibles y frecuencia del oscilador
+#pragma config FOSC = XT        // Oscilador XT (usa cristal externo)
+#pragma config WDTE = OFF       // Watchdog Timer apagado
+#pragma config PWRTE = ON       // Power-up Timer habilitado
+#pragma config CP = OFF         // Protección de código apagada
+#define _XTAL_FREQ 4000000      // Frecuencia del oscilador a 4 MHz
+
+// Definimos los tiempos de retardo para cada LED (en milisegundos)
+#define TIEMPO_VERDE 2000      // 2 segundos para LED verde
+#define TIEMPO_AMARILLO 2000    // 2 segundos para LED amarillo
+#define TIEMPO_ROJO 2000        // 2 segundos para LED rojo
+
+void main(void) {
+    // Configuración de puertos
+    TRISB = 0x00;               // Configura todo PORTB como salida
+    PORTB = 0x00;               // Apaga todos los LEDs inicialmente
+
+    while (1) {
+        // Encender LED verde
+        PORTBbits.RB2 = 1;      // LED verde en RB2
+        __delay_ms(TIEMPO_VERDE);
+        PORTBbits.RB2 = 0;      // Apaga LED verde
+
+        // Encender LED amarillo
+        PORTBbits.RB1 = 1;      // LED amarillo en RB1
+        __delay_ms(TIEMPO_AMARILLO);
+        PORTBbits.RB1 = 0;      // Apaga LED amarillo
+
+        // Encender LED rojo
+        PORTBbits.RB0 = 1;      // LED rojo en RB0
+        __delay_ms(TIEMPO_ROJO);
+        PORTBbits.RB0 = 0;      // Apaga LED rojo
+    }
+}
