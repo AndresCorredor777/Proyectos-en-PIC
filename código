@@ -1,0 +1,165 @@
+----------------------------------main.c------------------------------------------
+#include "lcd.h"
+#include <xc.h>
+#include <stdio.h>  // Para sprintf
+
+#define _XTAL_FREQ 4000000
+
+// Prototipos de funciones
+void ADC_Init();
+int ADC_Read(int channel);
+void USART_Init(long baud_rate);
+void USART_Transmit(char data);
+void USART_Send_String(const char *str);
+void USART_Send_Float(float value);
+
+void main(void) {
+    int adc_value;
+    float temperature;
+    char buffer[16]; // Buffer para almacenar la temperatura en formato de cadena
+
+    // Inicializaciones
+    ADC_Init();                  // Inicializa el ADC
+    LCD_Init();                  // Inicializa el LCD
+    USART_Init(9600);            // Inicializa USART con 9600 bps
+    LCD_Set_Cursor(1, 1);
+    LCD_String("Temperatura:");
+
+    while (1) {
+        // Lee el valor ADC del sensor LM35
+        adc_value = ADC_Read(0);           // Lee el canal 0 (AN0)
+        temperature = adc_value * 0.488;   // Convierte a grados Celsius
+        
+        // Muestra la temperatura en el LCD
+        LCD_Set_Cursor(2, 1);
+        sprintf(buffer, "Temp: %.2f C", temperature); // Convierte a string
+        LCD_String(buffer);
+
+        // Envía la temperatura al puerto serial
+        USART_Send_String("Temperatura: ");
+        USART_Send_Float(temperature);
+        USART_Send_String(" C\r\n");
+
+        __delay_ms(1000);  // Actualiza cada segundo
+    }
+}
+
+void ADC_Init() {
+    ADCON0 = 0x41; // Habilita ADC y selecciona AN0
+    ADCON1 = 0x80; // VDD y VSS como referencias
+}
+
+int ADC_Read(int channel) {
+    ADCON0 &= 0xC5;                // Limpia el canal
+    ADCON0 |= channel << 3;        // Selecciona el canal
+    __delay_ms(2);                 // Tiempo de adquisición
+    GO_nDONE = 1;                  // Inicia la conversión ADC
+    while (GO_nDONE);              // Espera a que la conversión termine
+    return ((ADRESH << 8) + ADRESL); // Retorna el valor de 10 bits
+}
+
+void USART_Init(long baud_rate) {
+    long spbrg_value;
+    spbrg_value = (_XTAL_FREQ / (64 * baud_rate)) - 1;
+    SPBRG = spbrg_value;           // Configura el baud rate
+    TXSTA = 0x24;                  // Transmisión habilitada, modo asíncrono
+    RCSTA = 0x90;                  // Habilita recepción y módulo serial
+}
+
+void USART_Transmit(char data) {
+    while (!TXIF);                 // Espera a que el buffer esté listo
+    TXREG = data;                  // Carga el dato en el registro de transmisión
+}
+
+void USART_Send_String(const char *str) {
+    while (*str) {
+        USART_Transmit(*str++);
+    }
+}
+
+void USART_Send_Float(float value) {
+    char buffer[10];
+    sprintf(buffer, "%.2f", value); // Convierte el valor a string con 2 decimales
+    USART_Send_String(buffer);
+}
+
+-----------------------------------------------lcd.c--------------------------------------------
+
+#include "lcd.h"
+#define _XTAL_FREQ 4000000
+
+void LCD_Enable() {
+    LCD_EN = 1;
+    __delay_ms(1);
+    LCD_EN = 0;
+}
+
+void LCD_Command(unsigned char cmd) {
+    LCD_RS = 0;                      // Modo comando
+    LCD_D4 = (cmd >> 4) & 1;
+    LCD_D5 = (cmd >> 5) & 1;
+    LCD_D6 = (cmd >> 6) & 1;
+    LCD_D7 = (cmd >> 7) & 1;
+    LCD_Enable();
+    LCD_D4 = cmd & 1;
+    LCD_D5 = (cmd >> 1) & 1;
+    LCD_D6 = (cmd >> 2) & 1;
+    LCD_D7 = (cmd >> 3) & 1;
+    LCD_Enable();
+}
+
+void LCD_Char(char data) {
+    LCD_RS = 1;                      // Modo datos
+    LCD_D4 = (data >> 4) & 1;
+    LCD_D5 = (data >> 5) & 1;
+    LCD_D6 = (data >> 6) & 1;
+    LCD_D7 = (data >> 7) & 1;
+    LCD_Enable();
+    LCD_D4 = data & 1;
+    LCD_D5 = (data >> 1) & 1;
+    LCD_D6 = (data >> 2) & 1;
+    LCD_D7 = (data >> 3) & 1;
+    LCD_Enable();
+}
+
+void LCD_Init() {
+    TRISB = 0x00;                    // Configura PORTB como salida
+    __delay_ms(20);                  // Espera inicial
+    LCD_Command(0x02);               // Modo 4 bits
+    LCD_Command(0x28);               // LCD 2 líneas, 5x7 matriz
+    LCD_Command(0x0C);               // Enciende el display
+    LCD_Command(0x06);               // Modo de entrada
+    LCD_Command(0x01);               // Limpia el display
+}
+
+void LCD_Set_Cursor(unsigned char row, unsigned char col) {
+    unsigned char pos = (row == 1) ? 0x80 + col - 1 : 0xC0 + col - 1;
+    LCD_Command(pos);
+}
+
+void LCD_String(const char *str) {
+    while (*str) {
+        LCD_Char(*str++);
+    }
+}
+
+-------------------------------------------------lcd.h----------------------------------------------------
+#ifndef LCD_H
+#define LCD_H
+
+#include <xc.h>
+
+#define LCD_RS PORTBbits.RB0
+#define LCD_EN PORTBbits.RB1
+#define LCD_D4 PORTBbits.RB2
+#define LCD_D5 PORTBbits.RB3
+#define LCD_D6 PORTBbits.RB4
+#define LCD_D7 PORTBbits.RB5
+
+void LCD_Init();
+void LCD_Command(unsigned char cmd);
+void LCD_Char(char data);
+void LCD_String(const char *str);
+void LCD_Set_Cursor(unsigned char row, unsigned char col);
+
+#endif
